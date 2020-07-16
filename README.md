@@ -1,4 +1,4 @@
-# SyntaxPointer
+# SyntacticPointer
 This repository includes a more efficient implementation of the left-to-right dependency parser with pointer networks described in NAACL paper [Left-to-Right Dependency Parsing with Pointer Networks](https://arxiv.org/abs/1903.08445). This is based on the updated version of the framework by Ma et al. (2018) (https://github.com/XuezheMax/NeuroNLP2) that implements a faster batch decoding and includes a "parse" mode to test a saved model. Unlike the original implementation (https://github.com/danifg/Left2Right-Pointer-Parser), this optimized version does not avoid the generation of cycles during decoding, since the presence of them is negligible. We additionally include an option to remove cycles as a post-processing step in order to output a well-formed dependency tree.
 
 
@@ -28,7 +28,7 @@ We report a fair comparison against the DeepBiaffine ([Deep Biaffine Attention f
 | ------------- | :---: | :---: | :-------------: |
 | DeepBiaffine  | 95.91 | 94.31 |     103.29      |
 | StackPointer  | 95.90 | 94.26 |     84.42       |
-| SyntaxPointer | 96.02 | 94.39 |     194.21      |
+| SyntacticPointer | 96.02 | 94.39 |     194.21      |
 
 While less accurate than the original parser (https://github.com/danifg/Left2Right-Pointer-Parser) due to the lack of cycle detection during decoding, this alternative implementation outperforms the other two parsers in both accuracy and speed.
 
