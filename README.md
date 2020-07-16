@@ -22,16 +22,15 @@ Please add the argument ``--remove_cycles`` to the test script if you want to ou
 
 ### Performance
 
-We report a fair comparison against the DeepBiaffine ([Deep Biaffine Attention for Neural Dependency Parsing](https://arxiv.org/abs/1611.01734)) and StackPointer ([Stack-Pointer Networks for Dependency Parsing](https://arxiv.org/abs/1805.01087)) parsers (both also implemented under the framework by (http\
-s://github.com/XuezheMax/NeuroNLP2)) on the Stanford Dependency conversion ([v3.3.0](https://nlp.stanford.edu/software/stanford-parser-full-2013-11-12.zip)) of the English Penn Treebank with POS tags predicted by [Stanford POS tagger](https://nlp.stanford.edu/software/stanford-postagger-full-2018-10-16.zip).
+We report a fair comparison against the DeepBiaffine ([Deep Biaffine Attention for Neural Dependency Parsing](https://arxiv.org/abs/1611.01734)) and StackPointer ([Stack-Pointer Networks for Dependency Parsing](https://arxiv.org/abs/1805.01087)) parsers (both also implemented under the framework by (https://github.com/XuezheMax/NeuroNLP2)) on the Stanford Dependency conversion ([v3.3.0](https://nlp.stanford.edu/software/stanford-parser-full-2013-11-12.zip)) of the English Penn Treebank with POS tags predicted by [Stanford POS tagger](https://nlp.stanford.edu/software/stanford-postagger-full-2018-10-16.zip).
 
-| Parser        |  UAS  |  LAS  | Speed (Sents/s) |
+| Parser        |  UAS  |  LAS  | Speed (sents/s) |
 | ------------- | :---: | :---: | :-------------: |
 | DeepBiaffine  | 95.91 | 94.31 |     103.29      |
 | StackPointer  | 95.90 | 94.26 |     84.42       |
 | SyntaxPointer | 96.02 | 94.39 |     194.21      |
 
-While less accurate than the original implementation (https://github.com/danifg/Left2Right-Pointer-Parser) due to the lack of cycle detection during decoding, this alternative implementation outperforms the other two parsers in both accuracy and speed.
+While less accurate than the original parser (https://github.com/danifg/Left2Right-Pointer-Parser) due to the lack of cycle detection during decoding, this alternative implementation outperforms the other two parsers in both accuracy and speed.
 
 ### Citation
     @inproceedings{fernandez-gonzalez-gomez-rodriguez-2019-left,
