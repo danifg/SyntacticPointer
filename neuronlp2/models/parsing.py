@@ -462,7 +462,6 @@ class L2RPtrNet(nn.Module):
         src_encoding = output_enc.gather(dim=1, index=heads_stack.unsqueeze(2).expand(batch, length_dec, enc_dim))
 
         """
-        NO SE USA
         if self.sibling:
             # [batch, length_decoder, hidden_size * 2]
             mask_sib = siblings.gt(0).float().unsqueeze(2)
@@ -594,39 +593,7 @@ class L2RPtrNet(nn.Module):
                 iter-=1
             return False
              
-        def hasCycles(A, head, dep):
-            if head == dep: return True
-            aux = set(A)
-            aux.add((head,dep))
-            if count_cycles(aux) != 0: return True
-            return False
 
-        def count_cycles(A):
-            d = {}
-            for a,b in A:
-                if a not in d:
-                    d[a] = [b]
-                else:
-                    d[a].append(b)
-            return sum([1 for e in tarjan(d) if len(e) > 1])
-
-
-        def is_nonproj(A, head_node, node):
-            left_node=int(node)
-            right_node=int(head_node)
-            if int(node)>int(head_node):
-                left_node = int(head_node)
-                right_node = int(node) 
-            for head, index in A:
-                left = int(index)
-                right = int(head)
-                if int(index) > int(head):
-                    left = int(head)
-                    right = int(index)
-                if (left<left_node and left_node<right and right<right_node) or (left_node<left and left<right_node and right_node<right): return True
-            return False
-        
-        debug=False
 
         # reset noise for decoder
         self.decoder.reset_noise(0)
@@ -653,7 +620,7 @@ class L2RPtrNet(nn.Module):
         #num_steps = 2 * max_len - 1
         num_steps = max_len - 1 
         #stacked_heads = torch.zeros(batch, 1, num_steps + 1, device=device, dtype=torch.int64)
-        stacked_heads = torch.ones(batch, 1, num_steps + 1, device=device, dtype=torch.int64)#Starts in position 1, instead of 0
+        stacked_heads = torch.ones(batch, 1, num_steps + 1, device=device, dtype=torch.int64)
         #siblings = torch.zeros(batch, 1, num_steps + 1, device=device, dtype=torch.int64) if self.sibling else None
         hypothesis_scores = output_enc.new_zeros((batch, 1))
 
@@ -663,7 +630,7 @@ class L2RPtrNet(nn.Module):
         constraints = torch.zeros(batch, 1, max_len, device=device, dtype=torch.uint8)
         
         #constraints[:, :, 0] = True
-        #En L2R si se puede asignar a root. constraints[:, :, 0] = 1
+        
         # [batch, 1]
         batch_index = torch.arange(batch, device=device, dtype=torch.int64).view(batch, 1)
 
@@ -681,13 +648,11 @@ class L2RPtrNet(nn.Module):
         mask_hyp = torch.ones(batch, 1, device=device)
         hx = hn
         for t in range(num_steps):
-            if debug: print(t,'---------------------')
+
             # [batch, num_hyp]
             curr_heads = stacked_heads[:, :, t]
 
-            if debug: print('CURHEAD',curr_heads, stacked_heads)
 
-            #NOT USED
             curr_gpars = heads.gather(dim=2, index=curr_heads.unsqueeze(2)).squeeze(2)
             #curr_sibs = siblings[:, :, t] if self.sibling else None
 
@@ -695,7 +660,6 @@ class L2RPtrNet(nn.Module):
             src_encoding = output_enc.gather(dim=1, index=curr_heads.unsqueeze(2).expand(batch, num_hyp, enc_dim))
 
             """
-            NOT USED
             if self.sibling:
                 mask_sib = curr_sibs.gt(0).float().unsqueeze(2)
                 output_enc_sibling = output_enc.gather(dim=1, index=curr_sibs.unsqueeze(2).expand(batch, num_hyp, enc_dim)) * mask_sib
@@ -729,13 +693,9 @@ class L2RPtrNet(nn.Module):
                 out_arc.masked_fill_(minus_mask_enc, float('-inf'))
 
             # [batch]
-            #Se usa como condicion de parada, ya que si es el ultimo step en el top-down, se considera que el curr_head apunta a si mismo
             #mask_last = steps.le(t + 1)
             mask_stop = steps.le(t)
 
-            if debug: print('steps', steps)
-            #print('MASK_last', mask_last)#Parece que no se usa
-            #print('MASK_stop', mask_stop)
             
             minus_mask_hyp = mask_hyp.eq(0).unsqueeze(2)
             # [batch, num_hyp, length]
@@ -743,29 +703,19 @@ class L2RPtrNet(nn.Module):
             # [batch, num_hyp, length]
             hypothesis_scores = hypothesis_scores.unsqueeze(2) + hyp_scores
 
-            #UNLABELLED PARSING
+
             # [batch, num_hyp, length]
-            #mask_leaf recoge la posicion del nodo actualmente siendo procesado
             mask_leaf = curr_heads.unsqueeze(2).eq(children[:, :num_hyp]) * mask_sent
             mask_non_leaf = (~mask_leaf) * mask_sent
 
-            #print('AAA', mask_leaf, curr_heads.unsqueeze(2),children[:, :num_hyp])
-            
 
-            # apply constrains to select valid hyps. EN L2R no hay constraints, salvo cycle-checking
+
             # [batch, num_hyp, length]
             #mask_leaf = mask_leaf * (mask_last.unsqueeze(1) + curr_heads.ne(0)).unsqueeze(2)
-            #mask_non_leaf recoge a los que puede apuntar y que cumplen las restricciones
-            #la unica restriccion en L2R es que no apunte a si mismo
             #mask_non_leaf = mask_non_leaf * (~constraints)
-
            
-            if debug: print('mask_sent', mask_sent)
-            if debug: print('mask_leaf', mask_leaf)
-            if debug: print('mask_non_leaf', mask_non_leaf) 
             
             #hypothesis_scores.masked_fill_(~(mask_non_leaf + mask_leaf), float('-inf'))
-            #Un nodo no puede apuntar a si mismo, entonces sacamos mask_leaf que recoge el nodo actual
             hypothesis_scores.masked_fill_(~(mask_non_leaf), float('-inf')) 
             # [batch, num_hyp * length]
             hypothesis_scores, hyp_index = torch.sort(hypothesis_scores.view(batch, -1), dim=1, descending=True)
@@ -773,7 +723,6 @@ class L2RPtrNet(nn.Module):
             # [batch]
             prev_num_hyp = num_hyp
             #num_hyps = (mask_leaf + mask_non_leaf).long().view(batch, -1).sum(dim=1) 
-            #No puede apuntar a si mismo, entonces sacamos mask_leaf
             num_hyps = (mask_non_leaf).long().view(batch, -1).sum(dim=1)
             num_hyp = num_hyps.max().clamp(max=beam).item()
             # [batch, hum_hyp]
@@ -786,8 +735,6 @@ class L2RPtrNet(nn.Module):
             base_index = hyp_index / max_len
             child_index = hyp_index % max_len
 
-            if debug: print('base_index',base_index)
-            if debug: print('child_index',child_index)  
 
             
             # [batch, num_hyp]
@@ -796,38 +743,28 @@ class L2RPtrNet(nn.Module):
 
             # [batch, num_hyp, length]
             base_index_expand = base_index.unsqueeze(2).expand(batch, num_hyp, max_len)
-            #NO CONSTRAINTS constraints = constraints.gather(dim=1, index=base_index_expand)
-            #NO CONSTRAINTS constraints.scatter_(2, child_index.unsqueeze(2), True)
 
-
-            if debug: print('base_index_expand',base_index_expand)
-            
-            # [batch, num_hyp]
-            #mask_leaf = hyp_heads.eq(child_index)#If child_id==head condicion en top-down, pero en l2r no puede darse
 
             # [batch, num_hyp, length]
 
-            if debug: print('HEADS',heads)
             heads = heads.gather(dim=1, index=base_index_expand)
 
-            #print('HEADS2',heads)
-            #Esta linea usa la condicion de top-down para decidir si seguir añadiendo hijos o ya terminar con ese nodo y subir para arriba de ahi que use gpars. Por tanto lo modificamos
-            #heads.scatter_(2, child_index.unsqueeze(2), torch.where(mask_leaf, hyp_gpars, hyp_heads).unsqueeze(2)) # es equivalente a heads[child_index]=head
+
             heads.scatter_(2, hyp_heads.unsqueeze(2), child_index.unsqueeze(2))# es equivalente a heads[head]=child_index
-            if debug: print('HEADS3',heads) 
+
             types = types.gather(dim=1, index=base_index_expand)
             # [batch, num_hyp]
             org_types = types.gather(dim=2, index=child_index.unsqueeze(2)).squeeze(2)
 
             # [batch, num_hyp, num_steps]
             base_index_expand = base_index.unsqueeze(2).expand(batch, num_hyp, num_steps + 1)
-            #print('base_index_expand2',base_index_expand) 
+
             stacked_heads = stacked_heads.gather(dim=1, index=base_index_expand)
-            if debug: print('stacked heads',stacked_heads)
-            #Mete el child encontrado, si no ha coincidido con el nodo actual (leaf), sino mete el padre de ese 
+
+
             #stacked_heads[:, :, t + 1] = torch.where(mask_leaf, hyp_gpars, child_index)
             stacked_heads[:, :, t + 1] = stacked_heads[:, :, t]+1 
-            if debug: print('stacked heads2',stacked_heads)
+
             
             """
             if self.sibling:
@@ -836,7 +773,7 @@ class L2RPtrNet(nn.Module):
             """
 
 
-            #LABELLER
+
             # [batch, num_hyp, type_space]
             base_index_expand = base_index.unsqueeze(2).expand(batch, num_hyp, type_space)
             child_index_expand = child_index.unsqueeze(2).expand(batch, num_hyp, type_space)
@@ -846,7 +783,6 @@ class L2RPtrNet(nn.Module):
             # compute the prediction of types [batch, num_hyp]
             hyp_type_scores, hyp_types = hyp_type_scores.max(dim=2)
             hypothesis_scores = hypothesis_scores + hyp_type_scores.masked_fill_(mask_stop.view(batch, 1), 0)
-            #Lo usa top-down
             #types.scatter_(2, child_index.unsqueeze(2), torch.where(mask_leaf, org_types, hyp_types).unsqueeze(2))
             types.scatter_(2, hyp_heads.unsqueeze(2), hyp_types.unsqueeze(2))
             
@@ -864,26 +800,18 @@ class L2RPtrNet(nn.Module):
         
         heads = heads[:, 0].cpu().numpy()
         types = types[:, 0].cpu().numpy()
-        #if debug:
-        #print('heads',heads)
-        #if debug:
-        #print('types', types)
 
         #REMOVE CYCLES
         if self.remove_cycles:
             for head in heads:
                 for elto in reversed(range(len(head))):
                     if creates_cycle(elto, head):
-                        #print('CICLO', elto)
-                        #for i,e in enumerate(head):
-                        #    print(e,'->',i)
                         head[elto]=0
                     
         
         
                         
-        #print('new_heads',heads)
-        #exit(0)
+
         return heads, types
 
 

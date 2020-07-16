@@ -119,7 +119,7 @@ def train(args):
 
     logger = get_logger("Parsing")
 
-    #ADDED
+    
     SEED = 1234
 
     random.seed(SEED)
@@ -134,7 +134,7 @@ def train(args):
     
     
     args.cuda = torch.cuda.is_available()
-    print('CUDA?', torch.cuda.is_available())
+    
     device = torch.device('cuda', 0) if args.cuda else torch.device('cpu')
     train_path = args.train
     dev_path = args.dev
